@@ -1,4 +1,4 @@
-import { DocsThemeConfig } from "nextra-theme-docs";
+import { DocsThemeConfig, ThemeSwitch } from "nextra-theme-docs";
 import { useRouter } from "next/router";
 
 const themeConfig: DocsThemeConfig = {
@@ -29,13 +29,23 @@ const themeConfig: DocsThemeConfig = {
     title: "On this page",
   },
   search: {
-    placeholder: "Search",
+    placeholder: "찾고싶은 글을 입력하세요",
   },
   editLink: {
     component: () => null,
   },
   feedback: {
     content: null,
+  },
+  themeSwitch: {
+    component: <ThemeSwitch lite />,
+    useOptions() {
+      return {
+        dark: "Dark",
+        light: "Light",
+        system: "System",
+      };
+    },
   },
   footer: {
     text: (
