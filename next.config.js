@@ -11,6 +11,11 @@ const withNextra = require("nextra")({
 
 module.exports = withNextra({
   webpack: (config, { isServer }) => {
+    config.module.rules.push({
+      test: /\.svg$/i,
+      issuer: /\.[jt]sx?$/,
+      use: ["@svgr/webpack"],
+    });
     if (!isServer) {
       config.resolve.fallback.fs = false;
     }
