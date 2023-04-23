@@ -1,14 +1,14 @@
 import { DocsThemeConfig, ThemeSwitch } from "nextra-theme-docs";
 import { useRouter } from "next/router";
-
+import PostLayout from "@/components/Layout/PostLayout";
+import MainLayout from "@/components/Layout/MainLayout";
+import Logo from "./public/g-log.svg";
 const themeConfig: DocsThemeConfig = {
   useNextSeoProps() {
     const { asPath } = useRouter();
     if (asPath !== "/") {
       return {
-        title: "Gyumong.dev",
         titleTemplate: "%s - Gyumong.dev",
-        description: "안녕하세요. 개발자 김민규입니다.",
         openGraph: {
           type: "website",
           locale: "ko",
@@ -46,6 +46,15 @@ const themeConfig: DocsThemeConfig = {
         system: "System",
       };
     },
+  },
+  logo: <Logo />,
+  main: ({ children }) => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const { asPath } = useRouter();
+    if (asPath === "/") {
+      return MainLayout({ children });
+    }
+    return PostLayout({ children });
   },
   footer: {
     text: (
