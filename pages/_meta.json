@@ -1,0 +1,21 @@
+{
+  "index": {
+    "title": "Home",
+    "type": "page",
+    "theme":{
+      "breadcrumb": false
+    }
+  },
+  "daily": {
+    "title": "Daily",
+    "type": "page"
+  },
+  "dev": {
+    "title": "Dev",
+    "type": "page"
+  },
+  "resume": {
+    "title": "Resume",
+    "type": "page"
+  }
+}
