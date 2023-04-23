@@ -3,22 +3,31 @@ import { useRouter } from "next/router";
 import PostLayout from "@/components/Layout/PostLayout";
 import MainLayout from "@/components/Layout/MainLayout";
 import Logo from "./public/g-log.svg";
+import { useTheme } from "next-themes";
 const themeConfig: DocsThemeConfig = {
   useNextSeoProps() {
     const { asPath } = useRouter();
     if (asPath !== "/") {
       return {
-        titleTemplate: "%s - Gyumong.dev",
+        titleTemplate: "%s - G.Log",
         openGraph: {
           type: "website",
           locale: "ko",
           url: "https://gyumong.dev",
-          site_name: "Gyumong.dev",
+          site_name: "G.Log",
+          images: [
+            {
+              url: "asesets/profile.png",
+              width: 800,
+              height: 600,
+              alt: "개발자 김민규",
+            },
+          ],
         },
       };
     }
     return {
-      title: "Gyumong.dev",
+      title: "G.Log",
       titileTemplate: "%s",
     };
   },
@@ -47,7 +56,11 @@ const themeConfig: DocsThemeConfig = {
       };
     },
   },
-  logo: <Logo />,
+  logo: () => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const { theme } = useTheme();
+    return <Logo className={theme === "dark" ? "fill-white" : "fill-black"} />;
+  },
   main: ({ children }) => {
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const { asPath } = useRouter();
