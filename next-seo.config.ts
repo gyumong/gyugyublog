@@ -8,6 +8,14 @@ const config: NextSeoProps = {
     locale: "ko_KR",
     url: "https://www.gyumong.dev/",
     siteName: "G.Log",
+    images: [
+      {
+        url: "asesets/profile.png",
+        width: 800,
+        height: 600,
+        alt: "개발자 김민규",
+      },
+    ],
   },
 };
 
