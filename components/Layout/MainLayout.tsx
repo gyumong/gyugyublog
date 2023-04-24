@@ -1,6 +1,5 @@
 import { FC, ReactNode } from "react";
 import Image from "next/image";
-import { Card } from "nextra-theme-docs";
 
 type Props = {
   children: ReactNode;
