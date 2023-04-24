@@ -22,7 +22,7 @@ const MainLayout: FC<Props> = ({ children }) => {
         <div>
           <p className="nx-text-2xl mb-2">김민규</p>
           <p>
-            성장을 추구하는 개발자 김민규입니다.
+            프론트엔드 엔지니어 김민규입니다.
             <br />
             React와 TypeScript를 주력으로 사용합니다.
           </p>
