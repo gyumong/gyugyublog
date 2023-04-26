@@ -7,7 +7,7 @@ import { useUserEventLogger } from "@/hooks/useUserEventLogger";
 import Script from "next/script";
 export default function App({ Component, pageProps }: AppProps) {
   useUserEventLogger();
-  const GA_ID = process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID;
+  const GA_ID = process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS;
   return (
     <>
       <DefaultSeo {...SEO} />
