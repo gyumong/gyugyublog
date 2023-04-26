@@ -3,8 +3,9 @@ import { useRouter } from "next/router";
 
 export const useUserEventLogger = () => {
   const router = useRouter();
+  const GA_ID = process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS;
   const pageview = (url: string) => {
-    window.gtag("config", process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS ?? "", {
+    window.gtag("config", GA_ID, {
       page_path: url,
     });
   };
