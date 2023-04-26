@@ -11,10 +11,6 @@
     "title": "Daily",
     "type": "page"
   },
-  "dev": {
-    "title": "Dev",
-    "type": "page"
-  },
   "resume": {
     "title": "Resume",
     "type": "page"
