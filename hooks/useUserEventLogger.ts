@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useRouter } from "next/router";
-import { isInstagram } from "@/utils/userAgent";
+import { isInstagramInAppBrowser } from "@/utils/userAgent";
 
 export const useUserEventLogger = () => {
   const router = useRouter();
@@ -12,9 +12,12 @@ export const useUserEventLogger = () => {
   };
 
   useEffect(() => {
+    const userAgent = navigator.userAgent;
     const handleRouteChange = (url: string) => {
-      if (!isInstagram) {
-        pageview(url);
+      if (typeof window !== undefined) {
+        if (!isInstagramInAppBrowser(userAgent)) {
+          pageview(url);
+        }
       }
     };
     router.events.on("routeChangeComplete", handleRouteChange);
