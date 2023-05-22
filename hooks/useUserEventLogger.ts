@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useRouter } from "next/router";
+import { isInstagram } from "@/utils/userAgent";
 
 export const useUserEventLogger = () => {
   const router = useRouter();
@@ -12,7 +13,9 @@ export const useUserEventLogger = () => {
 
   useEffect(() => {
     const handleRouteChange = (url: string) => {
-      pageview(url);
+      if (!isInstagram) {
+        pageview(url);
+      }
     };
     router.events.on("routeChangeComplete", handleRouteChange);
     return () => {
