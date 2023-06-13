@@ -37,6 +37,11 @@ export function excapeInAppBrowser(targetUrl: string) {
           targetUrl
         )}`;
       }
+      if (useragt.match(/instagram/i)) {
+        window.location.href = `instagram://web/openExternal?url=${encodeURIComponent(
+          targetUrl
+        )}`;
+      }
     } else {
       // 안드로이드 접속 경우
       console.log("");
