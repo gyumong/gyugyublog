@@ -5,7 +5,11 @@ import SEO from "../next-seo.config";
 import { DefaultSeo } from "next-seo";
 import { useUserEventLogger } from "@/hooks/useUserEventLogger";
 import Script from "next/script";
+import { excapeInAppBrowser } from "@/utils/excapeInAppBrowser";
 export default function App({ Component, pageProps }: AppProps) {
+  const tragetUrl = "https://www.gyumong.dev";
+  excapeInAppBrowser(tragetUrl);
+
   useUserEventLogger();
   const GA_ID = process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS;
   return (
