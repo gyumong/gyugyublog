@@ -15,13 +15,13 @@ export function excapeInAppBrowser(targetUrl: string) {
   console.log("");
 
   // if (Agent.includes("kakao")) { // 카카오, 인스타 인앱 브라우저로 실행 시킨 경우
-  if (Agent.indexOf("kakao") > -1 || Agent.indexOf("instagram") > -1) {
+  if (Agent.indexOf("instagram") > -1) {
     // 먼저, 카카오 인앱 브라우저 닫기
-    if (Agent.includes("kakao")) {
-      window.location.href = "kakaotalk://inappbrowser/close";
-    }
-    // 인스타 인앱 브라우저 닫기
-    else if (Agent.includes("instagram")) {
+    // if (Agent.includes("kakao")) {
+    //   window.location.href = "kakaotalk://inappbrowser/close";
+    // }
+    // // 인스타 인앱 브라우저 닫기
+    if (Agent.includes("instagram")) {
       window.location.href = "instagram://inappbrowser/close";
     }
     if (navigator.userAgent.match(/iPhone|iPad/i)) {
@@ -32,11 +32,11 @@ export function excapeInAppBrowser(targetUrl: string) {
       console.log("");
       const useragt = navigator.userAgent.toLowerCase();
 
-      if (useragt.match(/kakaotalk/i)) {
-        window.location.href = `kakaotalk://web/openExternal?url=${encodeURIComponent(
-          targetUrl
-        )}`;
-      }
+      // if (useragt.match(/kakaotalk/i)) {
+      //   window.location.href = `kakaotalk://web/openExternal?url=${encodeURIComponent(
+      //     targetUrl
+      //   )}`;
+      // }
       if (useragt.match(/instagram/i)) {
         window.location.href = `googlechrome://${encodeURIComponent(
           targetUrl
