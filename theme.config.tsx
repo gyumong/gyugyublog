@@ -64,10 +64,10 @@ const themeConfig: DocsThemeConfig = {
   main: ({ children }) => {
     // eslint-disable-next-line react-hooks/rules-of-hooks
     const { asPath } = useRouter();
-    if (asPath === "/" || asPath === "/resume") {
-      return MainLayout({ children });
+    if(asPath === "/daily"){
+      return PostLayout({ children });
     }
-    return PostLayout({ children });
+      return MainLayout({ children });
   },
   footer: {
     text: (
