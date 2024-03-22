@@ -13,7 +13,7 @@ const themeConfig: DocsThemeConfig = {
         openGraph: {
           type: "website",
           locale: "ko",
-          url: "https://gyumong.dev",
+          url: "https://gyumong.info",
           site_name: "G.Log",
           images: [
             {
@@ -73,8 +73,8 @@ const themeConfig: DocsThemeConfig = {
     text: (
       <span>
         © {new Date().getFullYear()} ©{" "}
-        <a href="https://gyumong.dev" target="_blank">
-          Gyumong.dev
+        <a href="https://gyumong.info" target="_blank">
+          Gyumong.Info
         </a>
       </span>
     ),

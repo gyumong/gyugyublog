@@ -6,7 +6,7 @@ const config: NextSeoProps = {
     title: "G.Log",
     description: "김민규의 개발자아 블로그입니다.",
     locale: "ko_KR",
-    url: "https://www.gyumong.dev/",
+    url: "https://www.gyumong.info/",
     siteName: "G.Log",
     images: [
       {

@@ -7,7 +7,7 @@ import { useUserEventLogger } from "@/hooks/useUserEventLogger";
 import Script from "next/script";
 import { excapeInAppBrowser } from "@/utils/excapeInAppBrowser";
 export default function App({ Component, pageProps }: AppProps) {
-  const tragetUrl = "https://www.gyumong.dev";
+  const tragetUrl = "https://www.gyumong.info";
   excapeInAppBrowser(tragetUrl);
 
   useUserEventLogger();
