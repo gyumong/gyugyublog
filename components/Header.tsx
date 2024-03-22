@@ -1,9 +1,7 @@
-import { ReactNode } from "react";
-import { format, parseISO } from "date-fns";
+import { format, parse } from "date-fns";
 import { useConfig } from "nextra-theme-docs";
 const Header = () => {
   const { frontMatter } = useConfig();
-  console.log('frontMatter.date',frontMatter.date)
   return (
     <>
       <header className="flex flex-col items-center pt-32 pb-24 gap-10 sm:items-start sm:pt-10 sm:pb-8 sm:gap-4">
@@ -14,7 +12,7 @@ const Header = () => {
           dateTime={frontMatter.date}
           className="text-sm text-slate-600 dark:text-slate-200"
         >
-          {/*{format(parseISO(frontMatter.date), "yyyy년 MM월 dd일")}*/}
+          {format(parse(frontMatter.date,'yyyy-MM-dd', new Date()), "yyyy년 MM월 dd일")}
         </time>
       </header>
     </>
