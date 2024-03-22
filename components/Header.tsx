@@ -13,7 +13,7 @@ const Header = () => {
           dateTime={frontMatter.date}
           className="text-sm text-slate-600 dark:text-slate-200"
         >
-          {format(parseISO(frontMatter.date), "yyyy년 MM월 dd일")}
+          {/*{format(parseISO(frontMatter.date), "yyyy년 MM월 dd일")}*/}
         </time>
       </header>
     </>
