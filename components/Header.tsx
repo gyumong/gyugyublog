@@ -3,6 +3,7 @@ import { format, parseISO } from "date-fns";
 import { useConfig } from "nextra-theme-docs";
 const Header = () => {
   const { frontMatter } = useConfig();
+  console.log('frontMatter.date',frontMatter.date)
   return (
     <>
       <header className="flex flex-col items-center pt-32 pb-24 gap-10 sm:items-start sm:pt-10 sm:pb-8 sm:gap-4">
