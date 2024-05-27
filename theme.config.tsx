@@ -4,23 +4,34 @@ import PostLayout from "@/components/Layout/PostLayout";
 import MainLayout from "@/components/Layout/MainLayout";
 import Logo from "./public/g-log.svg";
 import { useTheme } from "next-themes";
+import { useConfig } from "nextra-theme-docs";
+
 const themeConfig: DocsThemeConfig = {
   useNextSeoProps() {
     const { asPath } = useRouter();
-    if (asPath === "/daily/dnd-hackathon-reivews" ){
+    const { frontMatter } = useConfig();
+
+    const title = frontMatter.title || "G.Log";
+    const description = frontMatter.description || "The next site builder";
+    const image = frontMatter.image || "/assets/profile.png";
+    const url = `https://gyumong.info${asPath}`;
+
+    if (asPath === "/daily/dnd-hackathon-reivews") {
       return {
         titleTemplate: "%s - G.Log",
         openGraph: {
           type: "website",
           locale: "ko",
-          url: "https://gyumong.info",
+          url,
           site_name: "G.Log",
+          title,
+          description,
           images: [
             {
-              url: "/assets/daily/images/dnd-poster.jpeg",
+              url: image,
               width: 800,
               height: 600,
-              alt: "개발자 김민규",
+              alt: title,
             },
           ],
         },
@@ -32,14 +43,16 @@ const themeConfig: DocsThemeConfig = {
         openGraph: {
           type: "website",
           locale: "ko",
-          url: "https://gyumong.info",
+          url,
           site_name: "G.Log",
+          title,
+          description,
           images: [
             {
-              url: "/assets/profile.png",
+              url: image,
               width: 800,
               height: 600,
-              alt: "개발자 김민규",
+              alt: title,
             },
           ],
         },
@@ -47,11 +60,27 @@ const themeConfig: DocsThemeConfig = {
     }
     return {
       title: "G.Log",
-      titileTemplate: "%s",
+      titleTemplate: "%s",
     };
   },
   head: () => {
-    return null;
+    const { asPath, defaultLocale, locale } = useRouter();
+    const { frontMatter } = useConfig();
+    const url = `https://gyumong.info${defaultLocale === locale ? asPath : `/${locale}${asPath}`}`;
+    const title = frontMatter.title || "G.Log";
+    const description = frontMatter.description || "The next site builder";
+    const image = frontMatter.image || "/assets/profile.png";
+
+    return (
+        <>
+          <meta property="og:url" content={url} />
+          <meta property="og:title" content={title} />
+          <meta property="og:description" content={description} />
+          <meta property="og:image" content={image} />
+          <title>{title}</title>
+          <meta name="description" content={description} />
+        </>
+    );
   },
   toc: {
     title: "On this page",
@@ -76,23 +105,21 @@ const themeConfig: DocsThemeConfig = {
     },
   },
   logo: () => {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     const { theme } = useTheme();
     return <Logo className={theme === "dark" ? "fill-white" : "fill-black"} />;
   },
   main: ({ children }) => {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
     const { asPath } = useRouter();
-    if(asPath.startsWith("/daily")){
-      return PostLayout({ children });
+    if (asPath.startsWith("/daily")) {
+      return <PostLayout>{children}</PostLayout>;
     }
-      return MainLayout({ children });
+    return <MainLayout>{children}</MainLayout>;
   },
   footer: {
     text: (
-      <span>
-        © {new Date().getFullYear()} ©{" "}
-        <a href="https://gyumong.info" target="_blank">
+        <span>
+        © {new Date().getFullYear()}{" "}
+          <a href="https://gyumong.info" target="_blank">
           Gyumong.Info
         </a>
       </span>
