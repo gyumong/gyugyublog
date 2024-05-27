@@ -7,6 +7,25 @@ import { useTheme } from "next-themes";
 const themeConfig: DocsThemeConfig = {
   useNextSeoProps() {
     const { asPath } = useRouter();
+    if (asPath === "/daily/dnd-hackathon-reivews" ){
+      return {
+        titleTemplate: "%s - G.Log",
+        openGraph: {
+          type: "website",
+          locale: "ko",
+          url: "https://gyumong.info",
+          site_name: "G.Log",
+          images: [
+            {
+              url: "/assets/daily/images/dnd-poster.jpeg",
+              width: 800,
+              height: 600,
+              alt: "개발자 김민규",
+            },
+          ],
+        },
+      };
+    }
     if (asPath !== "/") {
       return {
         titleTemplate: "%s - G.Log",
@@ -17,7 +36,7 @@ const themeConfig: DocsThemeConfig = {
           site_name: "G.Log",
           images: [
             {
-              url: "asesets/profile.png",
+              url: "/assets/profile.png",
               width: 800,
               height: 600,
               alt: "개발자 김민규",

@@ -10,7 +10,7 @@ const config: NextSeoProps = {
     siteName: "G.Log",
     images: [
       {
-        url: "asesets/profile.png",
+        url: "/assets/profile.png",
         width: 800,
         height: 600,
         alt: "개발자 김민규",
