@@ -7,10 +7,10 @@
       "breadcrumb": false
     }
   },
-//  "daily": {
-//    "title": "Daily",
-//    "type": "page"
-//  },
+  "daily": {
+    "title": "Daily",
+    "type": "page"
+  },
   "resume": {
     "title": "Resume",
     "type": "page"
