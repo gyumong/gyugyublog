@@ -5,6 +5,7 @@ import SEO from "../next-seo.config";
 import { DefaultSeo } from "next-seo";
 import { useUserEventLogger } from "@/hooks/useUserEventLogger";
 import Script from "next/script";
+import { Analytics } from '@vercel/analytics/react';
 export default function App({ Component, pageProps }: AppProps) {
 
   useUserEventLogger();
@@ -33,6 +34,7 @@ export default function App({ Component, pageProps }: AppProps) {
       />
       <ThemeProvider attribute="class">
         <Component {...pageProps} />
+          <Analytics/>
       </ThemeProvider>
     </>
   );
