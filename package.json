@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "postbuild": "rm -rf .next/cache"
+    "postbuild": "next-sitemap && rm -rf .next/cache"
   },
   "dependencies": {
     "@types/node": "18.15.13",
@@ -20,6 +20,7 @@
     "eslint-config-next": "13.3.1",
     "next": "13.3.0",
     "next-seo": "^6.0.0",
+    "next-sitemap": "^4.2.3",
     "next-themes": "^0.2.1",
     "nextra": "^2.4.0",
     "nextra-theme-blog": "^2.4.0",

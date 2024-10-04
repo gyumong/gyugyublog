@@ -1,0 +1,9 @@
+# *
+User-agent: *
+Allow: /
+
+# Host
+Host: https://www.gyumong.info
+
+# Sitemaps
+Sitemap: https://www.gyumong.info/sitemap.xml
