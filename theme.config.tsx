@@ -115,6 +115,9 @@ const themeConfig: DocsThemeConfig = {
     }
     return <MainLayout>{children}</MainLayout>;
   },
+  project: {
+    link: "https://github.com/gyumong",
+  },
   footer: {
     text: (
         <span>
