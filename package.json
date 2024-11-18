@@ -33,5 +33,10 @@
   },
   "devDependencies": {
     "@svgr/webpack": "^7.0.0"
-  }
+  },
+  "resolutions": {
+    "@types/react": "18.0.38",
+    "@types/react-dom": "18.0.11"
+  },
+  "packageManager": "yarn@4.5.1"
 }
