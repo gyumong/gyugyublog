@@ -136,75 +136,75 @@ Vercel의 서버리스 함수는 각 HTTP 요청마다 새로운 인스턴스를
 
 #### 2️⃣ 장기적인 해결책: 백그라운드 작업을 안정적으로 실행하기
 
-##### ✅ Vercel의 Fluid Compute 활용 (`waitUntil` API)
+##### Next.js 13.4+에서 after() 권장
 
-2023년 말, Vercel은 서버리스 환경에서 백그라운드 실행을 보장하는 Fluid Compute 모델을 도입했다.
-이를 활용하면, 응답을 반환한 후에도 일정 시간 동안 서버리스 함수가 실행되도록 유지할 수 있다.
+Vercel 공식 문서에서도 Next.js 13.4 이상을 사용 중이라면, after() API를 권장한다.
+after()는 응답(또는 프리렌더) 이후에 실행될 코드를 등록하므로, Non-Blocking 방식으로 백그라운드 태스크를 수행할 수 있다.
+
+**장점:**
+
+- 클라이언트가 곧바로 응답을 받고, after(...) 블록이 백그라운드에서 일정 시간 실행됨
+- 대기 시간(응답 지연)이 줄어들고, 로컬과 서버리스 환경 모두에서 깔끔히 동작
+
+**주의:**
+
+- after()가 끝없이 돌 수 있는 것은 아니며, **서버리스 한계 Fluid Compute 등**에 맞춰 일정 시간 후 종료될 수 있음
+- Edge vs Node.js 런타임, 플랜이나 지역 설정에 따라 정확히 지원 범위가 다를 수 있음
+
+##### waitUntil vs after()
+
+Vercel은 Fluid Compute가 활성화된 프로젝트에서 waitUntil() API를 사용할 수 있다.
+하지만 **Next.js 13.4이상**에서는 **after함수**가 이미 내부적으로 waitUntil()과 유사하게 동작하도록 공식화되어 있으며,
+Vercel 문서에서도 **Next.js 13.4+ → after() 권장**이라고 명시한다.
 
 ```tsx
+// after() 사용 예시
 export async function POST(req: Request) {
   const res = NextResponse.next();
-  res.waitUntil(
-    (async () => {
-      await someLongRunningTask(); // 크롤링 작업
-    })()
-  );
-  return NextResponse.json({ message: "크롤링 시작됨" }, { status: 202 });
-}
-```
+  const session = await getIronSession<SessionData>(req, res, sessionOptions);
+  // ... 세션 검증 등 코드 생략
 
-따라서 Fluid Compute를 사용하면, “응답 후에도 로직을 계속 실행해야 하는” 문제를 해결할 수 있다. 다만 모든 지역(리전)이나 프로젝트에서 자동 적용되는 것은 아니므로, 배포 시 조건과 설정 여부를 확인해야 한다.
+  const taskId = uuidv4();
+  await setTask(taskId, 'in-progress', null);
 
-✔ **장점:** 응답을 즉시 반환하면서도 크롤링이 정상적으로 실행됨  
-❌ **제한:** Fluid Compute가 활성화된 프로젝트에서만 사용 가능
+  // 응답은 즉시 반환하고, 크롤링은 백그라운드에서 실행
+  const jsonResponse = NextResponse.json({ taskId, studentInfo: {...} }, { status: 202 });
 
-#### ✅ Next.js 15.1의 `after()` API 활용
-
-Next.js 15.1에서는 응답 후 실행할 코드를 등록할 수 있는 after() API가 추가되었다.
-이는 내부적으로 Vercel의 waitUntil()과 유사한 방식으로 동작한다
-
-```ts
-import { NextResponse, after } from "next/server";
-
-export async function GET() {
-  // 주 요청 처리
-  const data = await fetchSomeData();
-  const response = NextResponse.json(data);
-
-  // 응답 후에 실행할 비동기 로직 등록
-  after(() => {
-    console.log("이 코드는 응답 후에도 실행됨.");
-    // DB 업데이트, 로그 전송 등
+  after(async () => {
+    try {
+      // 실제 크롤링 로직 (생략)
+      await setTask(taskId, 'completed', { message: '동기화 완료' });
+      session.destroy(); // 세션 정리
+    } catch (err: any) {
+      await setTask(taskId, 'failed', { message: err.message, status: err.cause });
+    }
   });
 
-  return response;
+  return jsonResponse;
 }
 ```
 
-위와 같이 after()를 사용하면 클라이언트에는 이미 응답을 돌려준 상황에서도, 함수가 일정 시간 유지되면서 추가 로직을 처리할 수 있다. 이로써 응답 시간을 최소화하면서 백그라운드 작업을 안전하게 실행할 수 있다.
+##### ✅ 다른 방법: 메시지 큐 + 워커
 
-✔ **장점:** Next.js에서 기본 제공하는 기능이라 별도 설정이 필요 없음  
-❌ **제한:** Vercel이 아닌 다른 서버리스 환경에서는 지원되지 않을 수 있음
+만약 크롤링이 더 오래 걸리거나, 대규모 병렬 처리가 필요하다면, 메시지 큐 방식이 모범적이다:
 
-##### ✅ 그 외 백그라운드 처리 기법들
+1. `/api/start` 라우트에서 Queue(예: SQS, Upstash QStash 등)에 작업을 넣고, 즉시 202 응답
+2. 별도 워커(서버리스 함수나 다른 서버)에서 큐 메시지를 소비하여 크롤링 로직 처리
+3. 완료 후 DB/Redis에 결과 저장, 클라이언트는 `/progress` 폴링
 
-만약 Fluid Compute나 after()를 사용할 수 없는 버전/환경이라면, 서버리스 함수에서 응답 이후 작업을 수행하기 위해 일반적으로 아래 같은 패턴을 활용한다:
+이렇게 "요청 라우트"와 "실제 작업"을 완전히 분리하면, 서버리스 타임아웃 걱정 없이 장기간 작업을 진행할 수 있고, 확장성도 높아진다.
+다만 초기 설정과 구조가 복잡해질 수 있다.
 
-1. **다른 함수로 위임(“Fire-and-forget”)**
+#### 결론
 
-- 첫 번째 함수가 간단히 요청을 받고 바로 응답한 뒤, 내부적으로 다른 API Route(혹은 별도 서버)를 비동기로 호출하여 긴 작업을 대신 수행하도록 넘김
-- 이렇게 하면 첫 번째 함수는 빠르게 종료되므로 타임아웃이나 응답 지연 문제를 피할 수 있다.
+1. 서버리스 환경에서 "응답을 먼저 보내고, 응답 후에 추가 로직(크롤링 등)을 실행"하려면:
 
-2. **메시지 큐 / 작업 대기열 사용**
+   - (과거) `(async () => {...})()`처럼 "return 뒤 비동기 실행"은 보장되지 않음
+   - (현재) **Next.js 13.4이상**에서는 **after 함수**를, 그 이하 버전이거나 다른 프레임워크면 waitUntil() 또는 메시지 큐 등을 고려해야 함
 
-- 별도의 큐 서비스(SQS, SNS, Upstash QStash 등)에 작업 메시지를 넣어두고, 큐가 트리거하는 다른 서버리스 함수(또는 워커)가 실제 크롤링/분석 등의 장시간 작업을 진행하는 방식
-- 확장성이 좋지만, 외부 서비스 설정 및 추가 비용 부담이 있을 수 있다.
+2. Blocking(동기) 처리는 빠른 임시방편이지만, 응답 지연으로 사용자 경험에 차이가 줄 수 있음으로 권장하지 않음
 
-3. **Vercel Cron Jobs 활용**
-
-- 정기적 혹은 예약된 백그라운드 작업이 필요하다면, Vercel Cron Jobs 기능을 통해 지정된 간격으로 서버리스 함수를 자동 실행할 수 있다.
-
-결국 **요청-응답 주기를 최대한 짧게 유지하고, 무거운 작업은 비동기로 분산**하는 것이 서버리스 환경에서의 모범 사례다.
+3. 메시지 큐나 백엔드 워커 방식을 쓰면 장시간 작업이나 대규모 스케일도 안정적으로 처리 가능
 
 ---
 
