@@ -1,0 +1,206 @@
+---
+title: "OAuth 2.0과 PKCE로 안전하게 SSO 구축하기"
+date: "2025-04-11"
+description: "PKCE, CSRF, redirect_uri 조작, refresh token 회전까지. OAuth 기반 SSO 설계 시 반드시 고려해야 할 보안 요소와 WebView 환경에서의 현실적인 대응 방법을 정리했습니다."
+---
+
+서비스를 개발하다 보면 회원가입/로그인 기능을 구현해야 하는 순간이 옵니다. 요즘은 전통적인 아이디/비밀번호 방식보다 “○○○로 계속하기” 같은 소셜 로그인이 더 자연스럽고 익숙하죠.
+
+사용자는 새 계정을 만들 필요 없이 이미 사용 중인 계정으로 간편하게 로그인할 수 있고, 개발자 입장에서도 외부 인증 시스템을 활용함으로써 인증에 대한 보안 부담을 줄일 수 있습니다.
+
+이러한 요구는 OAuth 2.0이라는 표준 프로토콜을 통해 해결됩니다. OAuth는 제3의 서비스(클라이언트)가 사용자 리소스에 안전하게 접근할 수 있도록 위임하는 구조입니다. 이 글에서는 실제로 OAuth 2.0 Authorization Code Flow를 기반으로 SSO를 구현하며 고민했던 보안 이슈와 실전 팁을 공유하려고 합니다.
+
+## 시작하기에 앞서 용어 정리
+
+- Authentication (인증): 인증이란 사용자의 신원을 검증하는 행위로서 보안 프로세스에서 첫 번째 단계입니다.
+
+- Authorization (인가/권한부여) : 인가란, 사용자가 어떤 기능, 서비스, 데이터에 접근할 수 있는지를 결정하는 것입니다.
+
+즉, 우리 서비스에서 사용자는 Google, Kakao, Naver 등 기존에 사용하던 소셜 계정을 통해 회원가입 또는 로그인할 수 있습니다. 이때 사용자는 소셜 서비스(인증 제공자)에게 우리 서비스에 대한 로그인/정보 조회 권한을 위임하며, OAuth 인증 과정을 통해 우리 서비스는 사용자의 정보(예: 이메일, 이름 등)를 안전하게 받아와 로그인 처리를 하게 됩니다.
+
+## Authorization Code Flow 개요
+
+<figure
+  style={{
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    textAlign: "center",
+    marginTop: "8px",
+  }}
+>
+  <div>
+    <img
+      src="/assets/daily/images/Auth-code-flow-diagram.png"
+      alt="Authorization Code Flow"
+      title="OAuth Authorization Code Flow"
+      style={{
+        maxWidth: "100%",
+        height: "auto",
+      }}
+    />
+
+  </div>
+  <figcaption
+    style={{
+      marginTop: "16px",
+      fontSize: "14px",
+      color: "#666",
+    }}
+  >
+    Authorization Code Flow 출처
+    [Okta Blog](https://auth0.com/docs/get-started/authentication-and-authorization-flow/authorization-code-flow#how-authorization-code-flow-works)
+  </figcaption>
+</figure>
+
+이 글에서는 가장 일반적인 OAuth 2.0 Grant Type인 **Authorization Code Grant** 방식에 대해 설명합니다.
+
+1. 인증 제공자(Authorization Server)에 우리 서비스를 등록하고, client_id, client_secret, redirect_uri 등을 발급받습니다.
+2. 사용자가 로그인 버튼을 누르면, 클라이언트는 다음과 같은 URL로 리디렉션합니다:
+
+이때 URL에 붙는 쿼리 파라미터 목록은 OAuth 2.0 [RFC 6749](https://www.rfc-editor.org/rfc/rfc6749.txt) 기준으로 다음과 같아요.
+
+```
+https://accounts.example.com/oauth/authorize?
+  response_type=code
+  &client_id=abc123
+  &redirect_uri=https%3A%2F%2Fyourapp.com%2Fcallback
+  &scope=openid%20profile%20email
+  &state=xyz987
+  &code_challenge=H0Z3WZ7UZH...
+  &code_challenge_method=S256
+```
+
+- response_type (필수): 반드시 code로 명시해야됨, Authorization Code Grant임을 명시
+- client_id (필수): 인증 제공자가 발급한 우리 서비스의 고유 식별자
+- redirect_uri (선택): 인가 코드를 받기 위한 콜백 URL, 인증 제공자에 등록한 URI와 일치해야함
+- scope (선택): 요청할 사용자 권한 (ex: email, profile_image)을 공백 구분 문자열로 명시
+- state (선택/추천): CSRF 방지를 위한 임의의 난수, 인증 응답 시 그대로 돌아옴
+- code_challenge (선택): PKCE 적용 시 사용, code_verifier의 SHA-256 해시값
+- code_challenge_method (선택): 대부분 S256 사용
+- nonce (선택): OIDC 사용시 토큰 재사용 방지를 위해 사용
+
+여기서는 기본적인 Authorization Code Flow만 먼저 살펴보고, 이후 PKCE로 확장해볼게요.
+
+우리는 `response_type`, `client_id`, `redirect_uri`를 담아 요청했다고 가정해볼게요. 인증 제공자는 `client_id`와 `redirect_uri`가 유효한지 확인하고 맞다면 로그인 창을 띄워요.
+
+유저가 로그인을 하면 인증 제공자는 우리가 등록한 `redirect_uri`로 `code(Authorization Code)` 인가코드를 쿼리 파라미터로 담아 리다이렉트 시켜요.
+
+우리 서비스는 전달받은 `code`와 사전에 발급 받은 `client_secret`를 가지고 인증 제공자에게 앞으로 인증에 사용할 다회용 `token`을 요청해요.
+
+`token`을 전달받으면 우리 서비스는 앞으로 유저의 인증 정보를 계속 알 수 있어요.
+
+인가 코드는 브라우저의 쿼리 파라미터로 전달되기 때문에 탈취에 취약합니다. 따라서, 토큰 요청 시 `client_secret`과 함께 사용하는 방식으로 보안을 보완합니다.
+
+이때 중요한 점은 `client_secret`은 민감 정보이므로 **절대 클라이언트(브라우저, WebView 등)에서 사용되면 안 됩니다**. 반드시 서버에서만 관리되어야 해요.
+
+그런데 우리 서비스는 웹 서버 없이 동작하는 `client_secret`을 사용할 수 없는 환경인 SPA라면 어떡할까요?
+
+## SPA 환경에서의 보안: PKCE
+
+만약 인증 탈취 공격(Authorization Code Injection)에 취약한 서버 없이 동작하는 SPA 환경이라면 client_secret을 사용할 수 없습니다. 이때는 **PKCE** (Proof Key for Code Exchange)를 통해 보안을 강화합니다.
+
+### PKCE Flow
+
+1. 우리 서비스는 `code_verifier`라는 임의의 문자열을 생성해요. 그리고 이걸 서비스 내에 저장해요.
+2. 이를 SHA-256 해시 -> Base64URL 인코딩해서 `code_challenge`를 생성해요. 이때 `code_challenge_method`는 `S256` 이에요. 우리는 S256으로 구현할 수 있으면 무조건 구현해야해요. 그런데 만약 우리 서비스(클라이언트)가 S256 지원이 불가능한 경우 서버가 `plain`방식을 지원한다는 것을 사전에 알고 있는 경우엔 `plain` 방식으로 보낼 수 있어요.
+3. 유저가 로그인 요청을 하게 되면 `response_type`, `client_id`, `redirect_uri` 그리고 `code_challenge`, `code_challenge_method`를 담아 인증 제공자에게 요청을 보내요.
+4. 인증 제공자는 `client_id` 와 `redirect_uri`을 확인하고 맞다면 로그인 창을 띄워요.
+5. 유저가 로그인을 하면 인증 제공자는 전달 받은 `redirect_uri`로 `code`를 쿼리 파라미터로 담아서 우리 서비스로 리다이렉트 시켜요.
+6. 우리는 이제 `code`와 기존에 저장해둔 `code_verifier`을 가지고 다회용 `token`을 요청해요.
+7. 인증 제공자는 전달받은 `code_verifier`을 이전에 전달받은 `code_challenge_method` 방식(S256 등)으로 변환한 뒤, 기존에 받아둔 `code_challenge`와 비교합니다. 일치한다면 `token`을 전달합니다.
+
+이로써 인가코드가 탈취당하더라도 탈취자는 `code_verifier`를 갖고 있지 않기때문에 `token`을 발급 받을 수 없습니다.
+
+#### 요약: PKCE 적용 실전 팁
+
+- `code_verifier`: 클라이언트에서 무작위 문자열 생성 및 저장
+- `code_challenge`: SHA-256 + Base64URL 인코딩 결과
+- `code_challenge_method`: 가능하면 `S256`, fallback으로 `plain` 지원
+- `token` 요청 시 반드시 `code_verifier` 포함
+
+또 다른 공격들은 어떤 것들이 있고 어떤 식으로 대응할 수 있을까요?
+
+## 보안 위협과 대응 전략
+
+### CSRF
+
+Cross-Site Request Forgery (CSRF)는 유저가 이미 인증된 웹 애플리케이션에서 원치 않는 동작을 강제로 수행하도록 유도하는 공격이에요.
+
+로그인 과정에서는 주로 클라이언트의 redirect_uri를 이용한 공격이 발생해요. 공격자는 자신의 인가 코드나 액세스 토큰을 redirect_uri에 주입함으로써, 유저가 로그인 이후 공격자 계정에 연결된 세션을 사용하게 만들 수 있어요. 이로 인해 유저는 본인의 계정이라고 착각한 채, 공격자의 보호된 리소스에 개인 정보를 입력하거나 작업을 수행할 수 있어요
+
+이를 방지하기 위해서 `state` 파라미터를 사용할 수 있어요. `state`는 클라이언트가 요청과 콜백 간에 상태를 유지하기 위해 사용하는 불투명한 값이에요. 인가 서버는 유저를 클라이언트로 리디렉션할 때 이 값을 그대로 포함해요.
+
+즉 `state` 파라미터는 단순하게 요청한 사람이 맞는지를 클라이언트가 검증할 수 있도록 하는 값이에요.
+
+클라이언트는 이 값을 비교함으로써 로그인을 요청한 사용자와 로그인 후 돌아온 사용자가 동일한지를 검증할 수 있어요.
+
+이때 `state`는 고유하고 예측 불가능한 무작위 값이어야 하며, 이 값은 세션, httpOnly 쿠키, 또는 동일 출처 정책(Same-Origin Policy)에 의해 보호되는 localStorage 등에 저장해서 외부 스크립트나 도메인이 접근하지 못하게 해야 해요.
+
+### 요약: state 파라미터 실전 가이드
+
+- 무작위 값 생성 (UUID 또는 crypto API 활용)
+- 세션/localStorage/httpOnly 쿠키 중 한 곳에 저장
+- 콜백 시 값 일치 여부 확인
+
+### Authorization Code Redirection URI Manipulation
+
+인가 코드를 사용하는 OAuth Flow에서 클라이언트는 `redirect_uri` 파라미터를 통해 사용자를 다시 돌려보낼 URI를 명시할 수 있어요. 그런데 공격자가 `redirect_uri`를 조작한다면 인가 서버는 인가 코드를 공격자가 제어하는 URI로 보낼 수도 있어요.
+
+1. 공격자는 우리 앱에 계정을 생성하고 인가 플로우를 시작해요.
+2. 이때 인가 서버에 전달되는 인가 URI를 가로채서, 그안에 있는 `redirect_uri`를 악의적인 주소로 바꿔요.
+3. 공격자는 유저에게 이 조작된 링크를 전달해요.
+4. 유저는 링크를 클릭하고 정상적인 클라이언트로부터 인가 요청을 받는 것처럼 보여 인가를 승인해요.
+5. 인가 서버는 공격자가 조작한 URI로 인가 코드를 리디렉션해요.
+6. 공격자는 이 인가 코드를 가지고 원래 클라이언트(우리 서비스)에 접근해서 token을 요청하고, 결과적으로 유저의 리소스에 접근할 수 있게 돼요.
+
+**방지 방법**
+
+1. 인가 서버는 인가 코드 발급 시 사용한 `redirect_uri`와 token 교환 시 사용되는 `redirect_uri`가 일치하는지 확인한다.
+2. 공개 클라이언트(public cleint: SPA, mobile webview)에 대해서는 반드시 `redirect_uri`를 등록하게 해야한다.
+3. `redirect_uri`를 검증할 때는 쿼리 파라미터 까지 완전히 동일한 값으로 검증한다. (exact match)
+4. 가능하면 모든 `redirect_uri`를 화이트리스트 방식으로 관리하며, 미리 등록된 URI 외에는 절대 허용하지 않는다.
+
+### Refresh Token 탈취 대응: Rotation
+
+추가로 만약 `accessToken`과 `refreshToken`을 운용하는 시스템에서 공격자가 `refreshToken`을 탈취하여 accessToken 재발급 요청을 시도한다면, 이를 방지하기 위해 어떤 대응이 가능할까요?
+
+우선 Refresh Token Rotation을 사용할 수 있어요.
+즉, `accessToken`을 재발급할 때마다 새로운 `refreshToken`을 함께 발급하고, 이전 `refreshToken`은 즉시 무효화시키는 방식이에요.
+
+이때 무효화된 token은 서버에 기록으로 남겨두어 추적할 수 있어요.
+만약 `refreshToken`이 탈취되어 정상 사용자와 공격자가 동일한 token을 사용하려 한다면, 한쪽은 이미 무효화된 token을 사용하게 됩니다.
+이는 인가 서버가 이상 행위로 감지할 수 있으며, 해당 요청의 client_id, IP, 또는 user-agent 등을 기반으로 블랙리스트에 등록하거나 추가 인증을 요구하는 등의 방식으로 대응할 수 있어요.
+
+#### 요약: Refresh Token 탈취 방지
+
+- `accessToken` 재발급 시 새로운 `refreshToken` 함께 발급
+- 이전 `refreshToken` 즉시 폐기
+- 폐기된 token 사용 시 이상 행위 감지 → 대응 가능 (IP, user-agent, client_id 기반)
+
+## Native App에서 OAuth 구현 시 주의점 (WebView, In-App 브라우저 대응)
+
+우선 네이티브 앱이 인가 엔드포인트와 상호작용하는 방식은 크게 2가지가 있어요.
+
+1. 내장된 사용자 에이전트(embedded user-agent)
+2. 외부 사용자 에이전트(external user-agent)
+
+시작하기에 앞서 간단하게 햇갈릴 만한 용어를 정리하고 시작할게요.
+
+- 외부 사용자 에이전트(external user-agent): 인가 요청을 처리할 수 있으며, 해당 요청을 수행하는 네이티브 앱과 별개의 보안 도메인 또는 독립적인 엔티티인 사용자 에이전트
+- 임베디드 사용자 에이전트 (embedded user-agent): 인가 요청을 수행하는 네이티브 앱 안에 호스팅되어 있으며, 앱의 일부이거나 동일한 보안 도메인을 공유하는 사용자 에이전트
+
+- 인앱 브라우저 탭(in-app browser tab): 앱 내에 표시되지만 브라우저의 모든 보안 속성과 인증 상태를 유지하는, 프로그래밍 방식으로 인스턴스화된 브라우저.
+- 웹뷰(web-view): 앱 내에 내장되어 있는 웹 페이지를 렌더링하는 웹 브라우저 UI 구성 요소
+
+네이티브 앱에서 사용자를 인증(인가) 할 때 Best Current Practice는 네이티브 앱이 오직 외부 사용자 에이전트(ex: 브라우저)만을 사용해 OAuth를 수행해야 한다고 명시되어 있습니다.
+
+그러한 이유로는 웹뷰 기반의 임베디드 사용자 에이전트를 사용하게 되면 앱이 유저의 자격 증명(아이디,비밀번호)나 쿠키 등을 복사할 수 있고, 유저는 각 앱마다 매번 새로 로그인해야하는 불편함이 있었기 때문입니다. Google은 WebView에서의 OAuth 사용을 제한하고, 외부 브라우저 사용을 권장합니다.
+
+하지만 현실에서는 이러한 Best Practice를 100% 따르기 어려운 상황도 존재하기에 가능한 경우 외부 사용자 에이전트를 사용하는 것을 우선으로 하되, 그렇지 않은 상황에서는 PKCE, state 파라미터, 단기 인증 토큰, 리디렉션 화이트리스트 등의 보안 수단을 적극 활용해 **WebView 환경에서도 안전하고 유연한 인증 경험**을 설계할 수 있습니다.
+
+### 참고자료
+
+- [RFC6749](https://www.rfc-editor.org/rfc/rfc6749.txt)
+- [OAuth 2.0 Simplified | What is Oauth and How Does it Work | FusionAuth](https://fusionauth.io/articles/oauth/modern-guide-to-oauth)
+- [Okta Blog](https://auth0.com/docs/authenticate/single-sign-on)
