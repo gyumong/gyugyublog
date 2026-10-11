@@ -13,7 +13,6 @@ const themeConfig: DocsThemeConfig = {
 
     const title = frontMatter.title || "G.Log";
     const description = frontMatter.description || "The next site builder";
-    const image = frontMatter.image || "/assets/profile.png";
     const url = `https://gyumong.info${asPath}`;
 
     if (asPath === "/daily/dnd-hackathon-reivews") {
@@ -26,14 +25,6 @@ const themeConfig: DocsThemeConfig = {
           site_name: "G.Log",
           title,
           description,
-          images: [
-            {
-              url: image,
-              width: 800,
-              height: 600,
-              alt: title,
-            },
-          ],
         },
       };
     }
@@ -47,14 +38,6 @@ const themeConfig: DocsThemeConfig = {
           site_name: "G.Log",
           title,
           description,
-          images: [
-            {
-              url: image,
-              width: 800,
-              height: 600,
-              alt: title,
-            },
-          ],
         },
       };
     }
@@ -69,14 +52,12 @@ const themeConfig: DocsThemeConfig = {
     const url = `https://gyumong.info${defaultLocale === locale ? asPath : `/${locale}${asPath}`}`;
     const title = frontMatter.title || "G.Log";
     const description = frontMatter.description || "The next site builder";
-    const image = frontMatter.image || "/assets/profile.png";
 
     return (
         <>
           <meta property="og:url" content={url} />
           <meta property="og:title" content={title} />
           <meta property="og:description" content={description} />
-          <meta property="og:image" content={image} />
           <title>{title}</title>
           <meta name="description" content={description} />
         </>
